@@ -12,7 +12,7 @@
     input, select, button { width: 100%; padding: 12px; margin-top: 6px; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; color: white; box-sizing: border-box; font-size: 0.95rem; }
     button { background: #238636; font-weight: bold; border: none; cursor: pointer; margin-top: 16px; }
     button:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
-    canvas { width: 100%; max-width: 440px; border-radius: 12px; margin-top: 16px; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
+    canvas { width: 100%; max-width: 440px; border-radius: 12px; margin-top: 16px; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
     video { width: 100%; max-width: 440px; border-radius: 12px; margin-top: 16px; display: none; }
     .dl-btn { display: none; text-align: center; background: #1f6feb; color: white; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 12px; width: 100%; max-width: 440px; box-sizing: border-box; }
   </style>
@@ -22,15 +22,16 @@
   <div class="card">
     <h2>🎬 Motion Studio Pro</h2>
     
-    <label>Upload Image / Document</label>
+    <label>Upload Image / Flyer / Document</label>
     <input type="file" id="mainImgInput" accept="image/*">
 
     <label>Motion & Animation Style</label>
     <select id="motionStyle">
-      <option value="vox">1. Vox Editorial (Archival Zoom + Yellow Highlight)</option>
-      <option value="popup">2. 3D Origami Pop-Up (Depth Bounce & Shadows)</option>
-      <option value="unfold">3. Vintage Creased Unfold (Multi-Fold Reveal)</option>
-      <option value="stopmotion">4. True Stop-Motion Clay (10 FPS Stepped Jitter)</option>
+      <option value="corporate">1. Corporate Flyer / Staggered Line Reveal (New)</option>
+      <option value="vox">2. Vox Editorial (Archival Zoom + Yellow Highlight)</option>
+      <option value="popup">3. 3D Origami Pop-Up (Depth Bounce & Shadows)</option>
+      <option value="unfold">4. Vintage Creased Unfold (Multi-Fold Reveal)</option>
+      <option value="stopmotion">5. True Stop-Motion Clay (10 FPS Stepped Jitter)</option>
     </select>
 
     <button id="renderBtn">Render Motion Video</button>
@@ -67,15 +68,14 @@
     });
 
     function drawStaticPreview() {
-      ctx.fillStyle = "#1e1e1e";
+      ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, stage.width, stage.height);
       const aspect = baseImg.width / baseImg.height;
-      let drawW = stage.width * 0.85;
+      let drawW = stage.width * 0.9;
       let drawH = drawW / aspect;
       ctx.drawImage(baseImg, (stage.width - drawW)/2, (stage.height - drawH)/2, drawW, drawH);
     }
 
-    // Procedural Archival Film Grain & Dust
     function applyFilmGrain(intensity = 0.08) {
       const w = stage.width;
       const h = stage.height;
@@ -120,7 +120,9 @@
       recorder.start();
 
       const style = motionStyle.value;
-      if (style === 'vox') {
+      if (style === 'corporate') {
+        await renderCorporateFlyer();
+      } else if (style === 'vox') {
         await renderVoxStyle();
       } else if (style === 'popup') {
         await renderOrigamiPopUp();
@@ -133,7 +135,53 @@
       recorder.stop();
     });
 
-    // 1. Vox Style: Archival Document Push + Yellow Marker Sweep
+    // 1. Corporate Staggered Flyer Reveal (Sequential Section Wipe)
+    function renderCorporateFlyer() {
+      return new Promise((resolve) => {
+        let frame = 0;
+        const totalFrames = 100; // ~3.3 seconds at 30fps
+
+        const targetW = stage.width * 0.92;
+        const targetH = targetW * (baseImg.height / baseImg.width);
+        const x = (stage.width - targetW) / 2;
+        const y = (stage.height - targetH) / 2;
+
+        const interval = setInterval(() => {
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, stage.width, stage.height);
+
+          // Top Header (Logo & Title) always remains pinned
+          const headerH = targetH * 0.22;
+          ctx.drawImage(baseImg, 0, 0, baseImg.width, baseImg.height * 0.22, x, y, targetW, headerH);
+
+          // Body sections reveal sequentially in 5 stepped timing chunks
+          const step = Math.min(Math.floor(frame / 16), 5); 
+          const revealRatios = [0.22, 0.35, 0.50, 0.68, 0.85, 1.0];
+          const currentRevealH = targetH * revealRatios[step];
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(x, y, targetW, currentRevealH);
+          ctx.clip();
+          ctx.drawImage(baseImg, x, y, targetW, targetH);
+          ctx.restore();
+
+          // Subtle scanline indicator at current reveal edge
+          if (step < 5) {
+            ctx.fillStyle = "rgba(180, 0, 0, 0.15)";
+            ctx.fillRect(x, y + currentRevealH - 4, targetW, 4);
+          }
+
+          frame++;
+          if (frame > totalFrames) {
+            clearInterval(interval);
+            resolve();
+          }
+        }, 33);
+      });
+    }
+
+    // 2. Vox Style
     function renderVoxStyle() {
       return new Promise((resolve) => {
         let frame = 0;
@@ -143,7 +191,6 @@
           ctx.fillStyle = "#121214";
           ctx.fillRect(0, 0, stage.width, stage.height);
 
-          // Subtle Ken Burns push-in zoom
           let progress = frame / totalFrames;
           let scale = 1.0 + (progress * 0.08);
 
@@ -156,13 +203,11 @@
 
           ctx.drawImage(baseImg, x, y, currentW, currentH);
 
-          // Vox Highlighter Sweep Effect (Middle third band)
           if (frame > 15) {
             let markerProgress = Math.min((frame - 15) / 35, 1.0);
             ctx.save();
-            ctx.fillStyle = "rgba(255, 235, 59, 0.45)"; // Authentic highlighter tint
+            ctx.fillStyle = "rgba(255, 235, 59, 0.45)";
             ctx.globalCompositeOperation = "multiply";
-            
             let highlightY = y + currentH * 0.42;
             let highlightH = currentH * 0.16;
             ctx.fillRect(x, highlightY, currentW * markerProgress, highlightH);
@@ -180,7 +225,7 @@
       });
     }
 
-    // 2. 3D Origami Pop-Up
+    // 3. 3D Origami Pop-Up
     function renderOrigamiPopUp() {
       return new Promise((resolve) => {
         let frame = 0;
@@ -201,7 +246,6 @@
           let x = (stage.width - targetW) / 2;
           let y = (stage.height - targetH) / 2 + (1 - ease) * 140;
 
-          // Shadow depth
           ctx.save();
           ctx.shadowColor = "rgba(0,0,0,0.3)";
           ctx.shadowBlur = 35 * ease;
@@ -220,7 +264,7 @@
       });
     }
 
-    // 3. Vintage Creased Paper Unfold (Crease Lines + Multi-fold)
+    // 4. Vintage Creased Unfold
     function renderPaperUnfold() {
       return new Promise((resolve) => {
         let frame = 0;
@@ -242,7 +286,6 @@
 
           ctx.drawImage(baseImg, 0, 0, baseImg.width, baseImg.height, x, y, targetW, currentH);
 
-          // Horizontal & Vertical Paper Creases
           if (progress < 1.0) {
             ctx.fillStyle = `rgba(0, 0, 0, ${0.4 * (1 - progress)})`;
             ctx.fillRect(x, stage.height / 2 - 3, targetW, 6);
@@ -260,14 +303,13 @@
       });
     }
 
-    // 4. True Stop-Motion Clay (10 FPS Discrete Displacements)
+    // 5. True Stop-Motion Clay
     function renderTrueStopMotion() {
       return new Promise((resolve) => {
         let frame = 0;
         const totalFrames = 60;
 
         const interval = setInterval(() => {
-          // Lock visual updates to every 3rd execution tick (10 FPS step)
           if (frame % 3 === 0) {
             ctx.fillStyle = "#cfc9be";
             ctx.fillRect(0, 0, stage.width, stage.height);
