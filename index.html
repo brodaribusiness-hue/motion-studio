@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Motion Studio</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 16px; background: #0f172a; color: #f8fafc; max-width: 480px; margin: auto; }
+    h2 { text-align: center; margin-bottom: 20px; font-size: 1.3rem; }
+    .control-box { background: #1e293b; padding: 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 12px; }
+    label { font-size: 0.85rem; color: #94a3b8; }
+    input[type="file"], select, button { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; box-sizing: border-box; font-size: 0.95rem; }
+    button { background: #2563eb; color: #fff; font-weight: bold; border: none; cursor: pointer; margin-top: 8px; }
+    canvas { width: 100%; border-radius: 8px; background: #000; margin-top: 14px; display: block; }
+    video { width: 100%; border-radius: 8px; margin-top: 14px; display: none; }
+    .dl-btn { display: none; text-align: center; background: #16a34a; color: #fff; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+  <h2>🎬 Image to Motion Studio</h2>
+
+  <div class="control-box">
+    <div>
+      <label>Choose Image</label>
+      <input type="file" id="imageInput" accept="image/*">
+    </div>
+
+    <div>
+      <label>Select Motion Style</label>
+      <select id="styleSelect">
+        <option value="sketch">Sketch Motion (Pencil Reveal)</option>
+        <option value="paper">Paper Crafting (Stop-Motion)</option>
+        <option value="typing">Typing Motion (ASCII Scan)</option>
+      </select>
+    </div>
+
+    <button id="generateBtn">Generate Motion Video</button>
+  </div>
+
+  <canvas id="canvas" width="400" height="400"></canvas>
+  <video id="videoPlayer" controls autoplay loop></video>
+  <a id="downloadLink" class="dl-btn" download="motion.webm">⬇️ Download Video</a>
+
+  <script>
+    const imageInput = document.getElementById('imageInput');
+    const styleSelect = document.getElementById('styleSelect');
+    const generateBtn = document.getElementById('generateBtn');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const videoPlayer = document.getElementById('videoPlayer');
+    const downloadLink = document.getElementById('downloadLink');
+
+    let loadedImage = null;
+
+    imageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          loadedImage = img;
+          canvas.width = 400;
+          canvas.height = Math.round(400 * (img.height / img.width));
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    generateBtn.addEventListener('click', async () => {
+      if (!loadedImage) {
+        alert("Pehle image upload karein!");
+        return;
+      }
+
+      generateBtn.disabled = true;
+      generateBtn.innerText = "Rendering Motion...";
+
+      const width = canvas.width;
+      const height = canvas.height;
+      const style = styleSelect.value;
+
+      const stream = canvas.captureStream(30);
+      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+      const chunks = [];
+
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const videoUrl = URL.createObjectURL(blob);
+        videoPlayer.src = videoUrl;
+        videoPlayer.style.display = "block";
+        downloadLink.href = videoUrl;
+        downloadLink.style.display = "block";
+        generateBtn.disabled = false;
+        generateBtn.innerText = "Generate Motion Video";
+      };
+
+      recorder.start();
+
+      if (style === 'sketch') {
+        await renderSketch(width, height);
+      } else if (style === 'paper') {
+        await renderPaper(width, height);
+      } else if (style === 'typing') {
+        await renderTyping(width, height);
+      }
+
+      recorder.stop();
+    });
+
+    function renderSketch(w, h) {
+      return new Promise((resolve) => {
+        let frame = 0;
+        const totalFrames = 35;
+
+        ctx.drawImage(loadedImage, 0, 0, w, h);
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const d = imgData.data;
+
+        for (let i = 0; i < d.length; i += 4) {
+          let avg = (d[i] + d[i + 1] + d[i + 2]) / 3;
+          let val = avg > 115 ? 255 : 35;
+          d[i] = val; d[i + 1] = val; d[i + 2] = val;
+        }
+
+        const interval = setInterval(() => {
+          ctx.putImageData(imgData, 0, 0);
+          let progress = (frame / totalFrames) * w;
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(0, 0, progress, h);
+          ctx.clip();
+          ctx.drawImage(loadedImage, 0, 0, w, h);
+          ctx.restore();
+
+          frame++;
+          if (frame > totalFrames) {
+            clearInterval(interval);
+            resolve();
+          }
+        }, 35);
+      });
+    }
+
+    function renderPaper(w, h) {
+      return new Promise((resolve) => {
+        let frame = 0;
+        const totalFrames = 20;
+
+        const interval = setInterval(() => {
+          ctx.clearRect(0, 0, w, h);
+          ctx.save();
+          const angle = (Math.random() - 0.5) * 0.04;
+          const dx = (Math.random() - 0.5) * 6;
+          const dy = (Math.random() - 0.5) * 6;
+
+          ctx.translate(w / 2 + dx, h / 2 + dy);
+          ctx.rotate(angle);
+          ctx.drawImage(loadedImage, -w / 2, -h / 2, w, h);
+          ctx.restore();
+
+          frame++;
+          if (frame > totalFrames) {
+            clearInterval(interval);
+            resolve();
+          }
+        }, 100);
+      });
+    }
+
+    function renderTyping(w, h) {
+      return new Promise((resolve) => {
+        let frame = 0;
+        const totalFrames = 35;
+        const chars = "@%#*+=-:. ";
+        const step = 10;
+
+        ctx.drawImage(loadedImage, 0, 0, w, h);
+        const imgData = ctx.getImageData(0, 0, w, h).data;
+
+        const interval = setInterval(() => {
+          ctx.fillStyle = "#000";
+          ctx.fillRect(0, 0, w, h);
+          ctx.fillStyle = "#22c55e";
+          ctx.font = "9px monospace";
+
+          const currentMaxY = (frame / totalFrames) * h;
+
+          for (let y = 0; y < currentMaxY; y += step) {
+            for (let x = 0; x < w; x += step) {
+              const idx = (y * w + x) * 4;
+              const brightness = (imgData[idx] + imgData[idx + 1] + imgData[idx + 2]) / 3;
+              const charIdx = Math.floor((brightness / 255) * (chars.length - 1));
+              ctx.fillText(chars[charIdx], x, y);
+            }
+          }
+
+          frame++;
+          if (frame > totalFrames) {
+            clearInterval(interval);
+            resolve();
+          }
+        }, 35);
+      });
+    }
+  </script>
+</body>
+</html>
