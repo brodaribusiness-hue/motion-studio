@@ -3,33 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Paper Pop-up & Stop Motion Studio</title>
+  <title>Motion Studio Pro</title>
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; background: #111418; color: #f0f3f6; margin: 0; padding: 16px; display: flex; flex-direction: column; align-items: center; }
-    .card { background: #1b2129; border: 1px solid #2d3748; padding: 18px; border-radius: 12px; width: 100%; max-width: 440px; box-sizing: border-box; }
-    h2 { font-size: 1.25rem; margin-top: 0; text-align: center; color: #63b3ed; }
-    label { display: block; font-size: 0.85rem; margin-top: 10px; color: #a0aec0; }
-    input, select, button { width: 100%; padding: 12px; margin-top: 6px; border-radius: 8px; border: 1px solid #4a5568; background: #0d1117; color: white; box-sizing: border-box; font-size: 0.95rem; }
-    button { background: #3182ce; font-weight: bold; border: none; cursor: pointer; margin-top: 16px; transition: 0.2s; }
-    button:active { transform: scale(0.98); }
-    canvas { width: 100%; max-width: 440px; border-radius: 12px; margin-top: 16px; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0f141c; color: #e6edf3; margin: 0; padding: 16px; display: flex; flex-direction: column; align-items: center; }
+    .card { background: #161b22; border: 1px solid #30363d; padding: 18px; border-radius: 12px; width: 100%; max-width: 440px; box-sizing: border-box; }
+    h2 { font-size: 1.25rem; margin: 0 0 14px 0; text-align: center; color: #58a6ff; }
+    label { display: block; font-size: 0.85rem; margin-top: 10px; color: #8b949e; }
+    input, select, button { width: 100%; padding: 12px; margin-top: 6px; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; color: white; box-sizing: border-box; font-size: 0.95rem; }
+    button { background: #238636; font-weight: bold; border: none; cursor: pointer; margin-top: 16px; }
+    button:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+    canvas { width: 100%; max-width: 440px; border-radius: 12px; margin-top: 16px; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
     video { width: 100%; max-width: 440px; border-radius: 12px; margin-top: 16px; display: none; }
-    .dl-btn { display: none; text-align: center; background: #38a169; color: white; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 12px; width: 100%; max-width: 440px; box-sizing: border-box; }
+    .dl-btn { display: none; text-align: center; background: #1f6feb; color: white; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 12px; width: 100%; max-width: 440px; box-sizing: border-box; }
   </style>
 </head>
 <body>
 
   <div class="card">
-    <h2>📐 Origami & Motion Studio</h2>
+    <h2>🎬 Motion Studio Pro</h2>
     
-    <label>Upload Main Image / Character</label>
+    <label>Upload Image / Document</label>
     <input type="file" id="mainImgInput" accept="image/*">
 
-    <label>Motion Style (Inspired by References)</label>
+    <label>Motion & Animation Style</label>
     <select id="motionStyle">
-      <option value="popup">1. 3D Origami Pop-Up & Slide (Video 1 Style)</option>
-      <option value="unfold">2. Vintage Paper Crease Unfold (Video 3 Style)</option>
-      <option value="clay">3. Stop-Motion Layer Assembly (Video 2 Style)</option>
+      <option value="vox">1. Vox Editorial (Archival Zoom + Yellow Highlight)</option>
+      <option value="popup">2. 3D Origami Pop-Up (Depth Bounce & Shadows)</option>
+      <option value="unfold">3. Vintage Creased Unfold (Multi-Fold Reveal)</option>
+      <option value="stopmotion">4. True Stop-Motion Clay (10 FPS Stepped Jitter)</option>
     </select>
 
     <button id="renderBtn">Render Motion Video</button>
@@ -37,7 +38,7 @@
 
   <canvas id="stage" width="720" height="1280"></canvas>
   <video id="player" controls autoplay loop playsinline></video>
-  <a id="downloadBtn" class="dl-btn" download="origami_motion.webm">⬇️ Download Video</a>
+  <a id="downloadBtn" class="dl-btn" download="motion_output.webm">⬇️ Download Video</a>
 
   <script>
     const mainImgInput = document.getElementById('mainImgInput');
@@ -66,12 +67,29 @@
     });
 
     function drawStaticPreview() {
-      ctx.fillStyle = "#e2d9cc";
+      ctx.fillStyle = "#1e1e1e";
       ctx.fillRect(0, 0, stage.width, stage.height);
       const aspect = baseImg.width / baseImg.height;
       let drawW = stage.width * 0.85;
       let drawH = drawW / aspect;
       ctx.drawImage(baseImg, (stage.width - drawW)/2, (stage.height - drawH)/2, drawW, drawH);
+    }
+
+    // Procedural Archival Film Grain & Dust
+    function applyFilmGrain(intensity = 0.08) {
+      const w = stage.width;
+      const h = stage.height;
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const data = imgData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        if (Math.random() < 0.15) {
+          const noise = (Math.random() - 0.5) * 255 * intensity;
+          data[i] = Math.min(255, Math.max(0, data[i] + noise));
+          data[i+1] = Math.min(255, Math.max(0, data[i+1] + noise));
+          data[i+2] = Math.min(255, Math.max(0, data[i+2] + noise));
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
     }
 
     renderBtn.addEventListener('click', async () => {
@@ -81,7 +99,7 @@
       }
 
       renderBtn.disabled = true;
-      renderBtn.innerText = "Rendering Procedural Motion...";
+      renderBtn.innerText = "Rendering Motion...";
 
       const stream = stage.captureStream(30);
       const recorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
@@ -102,48 +120,56 @@
       recorder.start();
 
       const style = motionStyle.value;
-      if (style === 'popup') {
+      if (style === 'vox') {
+        await renderVoxStyle();
+      } else if (style === 'popup') {
         await renderOrigamiPopUp();
       } else if (style === 'unfold') {
         await renderPaperUnfold();
       } else {
-        await renderStopMotionClay();
+        await renderTrueStopMotion();
       }
 
       recorder.stop();
     });
 
-    // 1. Origami Pop-up & Layer Rise (Reference Video 1)
-    function renderOrigamiPopUp() {
+    // 1. Vox Style: Archival Document Push + Yellow Marker Sweep
+    function renderVoxStyle() {
       return new Promise((resolve) => {
         let frame = 0;
-        const totalFrames = 75; // 2.5 seconds at 30fps
+        const totalFrames = 80;
 
         const interval = setInterval(() => {
-          ctx.fillStyle = "#f5efe6"; // Clean paper background
+          ctx.fillStyle = "#121214";
           ctx.fillRect(0, 0, stage.width, stage.height);
 
-          let progress = Math.min(frame / 45, 1.0);
-          // Ease-out elastic bounce
-          let ease = 1 - Math.pow(1 - progress, 3);
-          let bounce = Math.sin(progress * Math.PI * 1.5) * 0.1;
+          // Subtle Ken Burns push-in zoom
+          let progress = frame / totalFrames;
+          let scale = 1.0 + (progress * 0.08);
 
-          let targetW = stage.width * 0.8;
-          let targetH = targetW * (baseImg.height / baseImg.width);
-          let currentH = targetH * (ease + bounce);
+          let baseW = stage.width * 0.85;
+          let baseH = baseW * (baseImg.height / baseImg.width);
+          let currentW = baseW * scale;
+          let currentH = baseH * scale;
+          let x = (stage.width - currentW) / 2;
+          let y = (stage.height - currentH) / 2;
 
-          let x = (stage.width - targetW) / 2;
-          let y = (stage.height - targetH) / 2 + (1 - ease) * 150;
+          ctx.drawImage(baseImg, x, y, currentW, currentH);
 
-          // Realistic Paper Drop Shadow
-          ctx.save();
-          ctx.shadowColor = "rgba(0,0,0,0.25)";
-          ctx.shadowBlur = 30 * ease;
-          ctx.shadowOffsetY = 25 * ease;
+          // Vox Highlighter Sweep Effect (Middle third band)
+          if (frame > 15) {
+            let markerProgress = Math.min((frame - 15) / 35, 1.0);
+            ctx.save();
+            ctx.fillStyle = "rgba(255, 235, 59, 0.45)"; // Authentic highlighter tint
+            ctx.globalCompositeOperation = "multiply";
+            
+            let highlightY = y + currentH * 0.42;
+            let highlightH = currentH * 0.16;
+            ctx.fillRect(x, highlightY, currentW * markerProgress, highlightH);
+            ctx.restore();
+          }
 
-          // Base fold reveal
-          ctx.drawImage(baseImg, 0, 0, baseImg.width, baseImg.height, x, y, targetW, currentH);
-          ctx.restore();
+          applyFilmGrain(0.06);
 
           frame++;
           if (frame > totalFrames) {
@@ -154,34 +180,76 @@
       });
     }
 
-    // 2. Vintage Paper Crease Unfold (Reference Video 3)
+    // 2. 3D Origami Pop-Up
+    function renderOrigamiPopUp() {
+      return new Promise((resolve) => {
+        let frame = 0;
+        const totalFrames = 75;
+
+        const interval = setInterval(() => {
+          ctx.fillStyle = "#e9e3d5";
+          ctx.fillRect(0, 0, stage.width, stage.height);
+
+          let progress = Math.min(frame / 45, 1.0);
+          let ease = 1 - Math.pow(1 - progress, 3);
+          let bounce = Math.sin(progress * Math.PI * 1.5) * 0.08;
+
+          let targetW = stage.width * 0.82;
+          let targetH = targetW * (baseImg.height / baseImg.width);
+          let currentH = targetH * (ease + bounce);
+
+          let x = (stage.width - targetW) / 2;
+          let y = (stage.height - targetH) / 2 + (1 - ease) * 140;
+
+          // Shadow depth
+          ctx.save();
+          ctx.shadowColor = "rgba(0,0,0,0.3)";
+          ctx.shadowBlur = 35 * ease;
+          ctx.shadowOffsetY = 25 * ease;
+          ctx.drawImage(baseImg, 0, 0, baseImg.width, baseImg.height, x, y, targetW, currentH);
+          ctx.restore();
+
+          applyFilmGrain(0.04);
+
+          frame++;
+          if (frame > totalFrames) {
+            clearInterval(interval);
+            resolve();
+          }
+        }, 33);
+      });
+    }
+
+    // 3. Vintage Creased Paper Unfold (Crease Lines + Multi-fold)
     function renderPaperUnfold() {
       return new Promise((resolve) => {
         let frame = 0;
-        const totalFrames = 60; // 2 seconds
+        const totalFrames = 70;
 
         const interval = setInterval(() => {
-          ctx.fillStyle = "#dfd7c8"; // Old parchment shade
+          ctx.fillStyle = "#dcd3c1";
           ctx.fillRect(0, 0, stage.width, stage.height);
 
-          let progress = Math.min(frame / 40, 1.0);
+          let progress = Math.min(frame / 45, 1.0);
           let ease = 0.5 - Math.cos(progress * Math.PI) / 2;
 
-          let targetW = stage.width * 0.9;
+          let targetW = stage.width * 0.88;
           let targetH = targetW * (baseImg.height / baseImg.width);
           let currentH = targetH * ease;
 
           let x = (stage.width - targetW) / 2;
           let y = (stage.height - currentH) / 2;
 
-          // Draw unfolding top & bottom halves
           ctx.drawImage(baseImg, 0, 0, baseImg.width, baseImg.height, x, y, targetW, currentH);
 
-          // Render paper fold lines & crease shadows
+          // Horizontal & Vertical Paper Creases
           if (progress < 1.0) {
-            ctx.fillStyle = "rgba(0, 0, 0, " + (0.35 * (1 - progress)) + ")";
-            ctx.fillRect(x, stage.height / 2 - 4, targetW, 8);
+            ctx.fillStyle = `rgba(0, 0, 0, ${0.4 * (1 - progress)})`;
+            ctx.fillRect(x, stage.height / 2 - 3, targetW, 6);
+            ctx.fillRect(stage.width / 2 - 2, y, 4, currentH);
           }
+
+          applyFilmGrain(0.08);
 
           frame++;
           if (frame > totalFrames) {
@@ -192,33 +260,37 @@
       });
     }
 
-    // 3. Stop-Motion Clay / Layer Stagger (Reference Video 2)
-    function renderStopMotionClay() {
+    // 4. True Stop-Motion Clay (10 FPS Discrete Displacements)
+    function renderTrueStopMotion() {
       return new Promise((resolve) => {
         let frame = 0;
         const totalFrames = 60;
 
         const interval = setInterval(() => {
-          // Low framerate feel (12 FPS stepped update)
-          ctx.fillStyle = "#d8d3cd";
-          ctx.fillRect(0, 0, stage.width, stage.height);
+          // Lock visual updates to every 3rd execution tick (10 FPS step)
+          if (frame % 3 === 0) {
+            ctx.fillStyle = "#cfc9be";
+            ctx.fillRect(0, 0, stage.width, stage.height);
 
-          let stepProgress = Math.min(Math.floor(frame / 4) / 10, 1.0);
-          
-          let targetW = stage.width * 0.8;
-          let targetH = targetW * (baseImg.height / baseImg.width);
+            let progress = Math.min(frame / 35, 1.0);
+            let targetW = stage.width * 0.82;
+            let targetH = targetW * (baseImg.height / baseImg.width);
 
-          // Discrete stop-motion jitter
-          let jitterX = (Math.random() - 0.5) * 6;
-          let jitterY = (Math.random() - 0.5) * 6;
+            let jitterAngle = (Math.random() - 0.5) * 0.05;
+            let jitterX = (Math.random() - 0.5) * 8;
+            let jitterY = (Math.random() - 0.5) * 8;
 
-          let x = (stage.width - targetW) / 2 + jitterX;
-          let y = (stage.height - targetH) / 2 + jitterY - (1 - stepProgress) * 80;
+            let x = (stage.width - targetW) / 2 + jitterX;
+            let y = (stage.height - targetH) / 2 + jitterY - (1 - progress) * 90;
 
-          ctx.save();
-          ctx.globalAlpha = Math.min(stepProgress * 1.4, 1.0);
-          ctx.drawImage(baseImg, x, y, targetW, targetH);
-          ctx.restore();
+            ctx.save();
+            ctx.translate(x + targetW / 2, y + targetH / 2);
+            ctx.rotate(jitterAngle);
+            ctx.drawImage(baseImg, -targetW / 2, -targetH / 2, targetW, targetH);
+            ctx.restore();
+
+            applyFilmGrain(0.07);
+          }
 
           frame++;
           if (frame > totalFrames) {
