@@ -3,138 +3,146 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Motion Studio</title>
+  <title>Paper Pop-up & Stop Motion Studio</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 16px; background: #0f172a; color: #f8fafc; max-width: 480px; margin: auto; }
-    h2 { text-align: center; margin-bottom: 20px; font-size: 1.3rem; }
-    .control-box { background: #1e293b; padding: 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 12px; }
-    label { font-size: 0.85rem; color: #94a3b8; }
-    input[type="file"], select, button { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; box-sizing: border-box; font-size: 0.95rem; }
-    button { background: #2563eb; color: #fff; font-weight: bold; border: none; cursor: pointer; margin-top: 8px; }
-    canvas { width: 100%; border-radius: 8px; background: #000; margin-top: 14px; display: block; }
-    video { width: 100%; border-radius: 8px; margin-top: 14px; display: none; }
-    .dl-btn { display: none; text-align: center; background: #16a34a; color: #fff; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 10px; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #111418; color: #f0f3f6; margin: 0; padding: 16px; display: flex; flex-direction: column; align-items: center; }
+    .card { background: #1b2129; border: 1px solid #2d3748; padding: 18px; border-radius: 12px; width: 100%; max-width: 440px; box-sizing: border-box; }
+    h2 { font-size: 1.25rem; margin-top: 0; text-align: center; color: #63b3ed; }
+    label { display: block; font-size: 0.85rem; margin-top: 10px; color: #a0aec0; }
+    input, select, button { width: 100%; padding: 12px; margin-top: 6px; border-radius: 8px; border: 1px solid #4a5568; background: #0d1117; color: white; box-sizing: border-box; font-size: 0.95rem; }
+    button { background: #3182ce; font-weight: bold; border: none; cursor: pointer; margin-top: 16px; transition: 0.2s; }
+    button:active { transform: scale(0.98); }
+    canvas { width: 100%; max-width: 440px; border-radius: 12px; margin-top: 16px; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+    video { width: 100%; max-width: 440px; border-radius: 12px; margin-top: 16px; display: none; }
+    .dl-btn { display: none; text-align: center; background: #38a169; color: white; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 12px; width: 100%; max-width: 440px; box-sizing: border-box; }
   </style>
 </head>
 <body>
 
-  <h2>🎬 Image to Motion Studio</h2>
+  <div class="card">
+    <h2>📐 Origami & Motion Studio</h2>
+    
+    <label>Upload Main Image / Character</label>
+    <input type="file" id="mainImgInput" accept="image/*">
 
-  <div class="control-box">
-    <div>
-      <label>Choose Image</label>
-      <input type="file" id="imageInput" accept="image/*">
-    </div>
+    <label>Motion Style (Inspired by References)</label>
+    <select id="motionStyle">
+      <option value="popup">1. 3D Origami Pop-Up & Slide (Video 1 Style)</option>
+      <option value="unfold">2. Vintage Paper Crease Unfold (Video 3 Style)</option>
+      <option value="clay">3. Stop-Motion Layer Assembly (Video 2 Style)</option>
+    </select>
 
-    <div>
-      <label>Select Motion Style</label>
-      <select id="styleSelect">
-        <option value="sketch">Sketch Motion (Pencil Reveal)</option>
-        <option value="paper">Paper Crafting (Stop-Motion)</option>
-        <option value="typing">Typing Motion (ASCII Scan)</option>
-      </select>
-    </div>
-
-    <button id="generateBtn">Generate Motion Video</button>
+    <button id="renderBtn">Render Motion Video</button>
   </div>
 
-  <canvas id="canvas" width="400" height="400"></canvas>
-  <video id="videoPlayer" controls autoplay loop></video>
-  <a id="downloadLink" class="dl-btn" download="motion.webm">⬇️ Download Video</a>
+  <canvas id="stage" width="720" height="1280"></canvas>
+  <video id="player" controls autoplay loop playsinline></video>
+  <a id="downloadBtn" class="dl-btn" download="origami_motion.webm">⬇️ Download Video</a>
 
   <script>
-    const imageInput = document.getElementById('imageInput');
-    const styleSelect = document.getElementById('styleSelect');
-    const generateBtn = document.getElementById('generateBtn');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const videoPlayer = document.getElementById('videoPlayer');
-    const downloadLink = document.getElementById('downloadLink');
+    const mainImgInput = document.getElementById('mainImgInput');
+    const motionStyle = document.getElementById('motionStyle');
+    const renderBtn = document.getElementById('renderBtn');
+    const stage = document.getElementById('stage');
+    const ctx = stage.getContext('2d');
+    const player = document.getElementById('player');
+    const downloadBtn = document.getElementById('downloadBtn');
 
-    let loadedImage = null;
+    let baseImg = null;
 
-    imageInput.addEventListener('change', (e) => {
+    mainImgInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = (ev) => {
         const img = new Image();
         img.onload = () => {
-          loadedImage = img;
-          canvas.width = 400;
-          canvas.height = Math.round(400 * (img.height / img.width));
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          baseImg = img;
+          drawStaticPreview();
         };
-        img.src = event.target.result;
+        img.src = ev.target.result;
       };
       reader.readAsDataURL(file);
     });
 
-    generateBtn.addEventListener('click', async () => {
-      if (!loadedImage) {
-        alert("Pehle image upload karein!");
+    function drawStaticPreview() {
+      ctx.fillStyle = "#e2d9cc";
+      ctx.fillRect(0, 0, stage.width, stage.height);
+      const aspect = baseImg.width / baseImg.height;
+      let drawW = stage.width * 0.85;
+      let drawH = drawW / aspect;
+      ctx.drawImage(baseImg, (stage.width - drawW)/2, (stage.height - drawH)/2, drawW, drawH);
+    }
+
+    renderBtn.addEventListener('click', async () => {
+      if (!baseImg) {
+        alert("Pehle image select karein!");
         return;
       }
 
-      generateBtn.disabled = true;
-      generateBtn.innerText = "Rendering Motion...";
+      renderBtn.disabled = true;
+      renderBtn.innerText = "Rendering Procedural Motion...";
 
-      const width = canvas.width;
-      const height = canvas.height;
-      const style = styleSelect.value;
-
-      const stream = canvas.captureStream(30);
-      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+      const stream = stage.captureStream(30);
+      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
       const chunks = [];
 
       recorder.ondataavailable = (e) => chunks.push(e.data);
       recorder.onstop = () => {
         const blob = new Blob(chunks, { type: 'video/webm' });
-        const videoUrl = URL.createObjectURL(blob);
-        videoPlayer.src = videoUrl;
-        videoPlayer.style.display = "block";
-        downloadLink.href = videoUrl;
-        downloadLink.style.display = "block";
-        generateBtn.disabled = false;
-        generateBtn.innerText = "Generate Motion Video";
+        const url = URL.createObjectURL(blob);
+        player.src = url;
+        player.style.display = "block";
+        downloadBtn.href = url;
+        downloadBtn.style.display = "block";
+        renderBtn.disabled = false;
+        renderBtn.innerText = "Render Motion Video";
       };
 
       recorder.start();
 
-      if (style === 'sketch') {
-        await renderSketch(width, height);
-      } else if (style === 'paper') {
-        await renderPaper(width, height);
-      } else if (style === 'typing') {
-        await renderTyping(width, height);
+      const style = motionStyle.value;
+      if (style === 'popup') {
+        await renderOrigamiPopUp();
+      } else if (style === 'unfold') {
+        await renderPaperUnfold();
+      } else {
+        await renderStopMotionClay();
       }
 
       recorder.stop();
     });
 
-    function renderSketch(w, h) {
+    // 1. Origami Pop-up & Layer Rise (Reference Video 1)
+    function renderOrigamiPopUp() {
       return new Promise((resolve) => {
         let frame = 0;
-        const totalFrames = 35;
-
-        ctx.drawImage(loadedImage, 0, 0, w, h);
-        const imgData = ctx.getImageData(0, 0, w, h);
-        const d = imgData.data;
-
-        for (let i = 0; i < d.length; i += 4) {
-          let avg = (d[i] + d[i + 1] + d[i + 2]) / 3;
-          let val = avg > 115 ? 255 : 35;
-          d[i] = val; d[i + 1] = val; d[i + 2] = val;
-        }
+        const totalFrames = 75; // 2.5 seconds at 30fps
 
         const interval = setInterval(() => {
-          ctx.putImageData(imgData, 0, 0);
-          let progress = (frame / totalFrames) * w;
+          ctx.fillStyle = "#f5efe6"; // Clean paper background
+          ctx.fillRect(0, 0, stage.width, stage.height);
+
+          let progress = Math.min(frame / 45, 1.0);
+          // Ease-out elastic bounce
+          let ease = 1 - Math.pow(1 - progress, 3);
+          let bounce = Math.sin(progress * Math.PI * 1.5) * 0.1;
+
+          let targetW = stage.width * 0.8;
+          let targetH = targetW * (baseImg.height / baseImg.width);
+          let currentH = targetH * (ease + bounce);
+
+          let x = (stage.width - targetW) / 2;
+          let y = (stage.height - targetH) / 2 + (1 - ease) * 150;
+
+          // Realistic Paper Drop Shadow
           ctx.save();
-          ctx.beginPath();
-          ctx.rect(0, 0, progress, h);
-          ctx.clip();
-          ctx.drawImage(loadedImage, 0, 0, w, h);
+          ctx.shadowColor = "rgba(0,0,0,0.25)";
+          ctx.shadowBlur = 30 * ease;
+          ctx.shadowOffsetY = 25 * ease;
+
+          // Base fold reveal
+          ctx.drawImage(baseImg, 0, 0, baseImg.width, baseImg.height, x, y, targetW, currentH);
           ctx.restore();
 
           frame++;
@@ -142,25 +150,74 @@
             clearInterval(interval);
             resolve();
           }
-        }, 35);
+        }, 33);
       });
     }
 
-    function renderPaper(w, h) {
+    // 2. Vintage Paper Crease Unfold (Reference Video 3)
+    function renderPaperUnfold() {
       return new Promise((resolve) => {
         let frame = 0;
-        const totalFrames = 20;
+        const totalFrames = 60; // 2 seconds
 
         const interval = setInterval(() => {
-          ctx.clearRect(0, 0, w, h);
-          ctx.save();
-          const angle = (Math.random() - 0.5) * 0.04;
-          const dx = (Math.random() - 0.5) * 6;
-          const dy = (Math.random() - 0.5) * 6;
+          ctx.fillStyle = "#dfd7c8"; // Old parchment shade
+          ctx.fillRect(0, 0, stage.width, stage.height);
 
-          ctx.translate(w / 2 + dx, h / 2 + dy);
-          ctx.rotate(angle);
-          ctx.drawImage(loadedImage, -w / 2, -h / 2, w, h);
+          let progress = Math.min(frame / 40, 1.0);
+          let ease = 0.5 - Math.cos(progress * Math.PI) / 2;
+
+          let targetW = stage.width * 0.9;
+          let targetH = targetW * (baseImg.height / baseImg.width);
+          let currentH = targetH * ease;
+
+          let x = (stage.width - targetW) / 2;
+          let y = (stage.height - currentH) / 2;
+
+          // Draw unfolding top & bottom halves
+          ctx.drawImage(baseImg, 0, 0, baseImg.width, baseImg.height, x, y, targetW, currentH);
+
+          // Render paper fold lines & crease shadows
+          if (progress < 1.0) {
+            ctx.fillStyle = "rgba(0, 0, 0, " + (0.35 * (1 - progress)) + ")";
+            ctx.fillRect(x, stage.height / 2 - 4, targetW, 8);
+          }
+
+          frame++;
+          if (frame > totalFrames) {
+            clearInterval(interval);
+            resolve();
+          }
+        }, 33);
+      });
+    }
+
+    // 3. Stop-Motion Clay / Layer Stagger (Reference Video 2)
+    function renderStopMotionClay() {
+      return new Promise((resolve) => {
+        let frame = 0;
+        const totalFrames = 60;
+
+        const interval = setInterval(() => {
+          // Low framerate feel (12 FPS stepped update)
+          ctx.fillStyle = "#d8d3cd";
+          ctx.fillRect(0, 0, stage.width, stage.height);
+
+          let stepProgress = Math.min(Math.floor(frame / 4) / 10, 1.0);
+          
+          let targetW = stage.width * 0.8;
+          let targetH = targetW * (baseImg.height / baseImg.width);
+
+          // Discrete stop-motion jitter
+          let jitterX = (Math.random() - 0.5) * 6;
+          let jitterY = (Math.random() - 0.5) * 6;
+
+          let x = (stage.width - targetW) / 2 + jitterX;
+          let y = (stage.height - targetH) / 2 + jitterY - (1 - stepProgress) * 80;
+
+          ctx.save();
+          ctx.globalAlpha = Math.min(stepProgress * 1.4, 1.0);
+          ctx.drawImage(baseImg, x, y, targetW, targetH);
           ctx.restore();
 
           frame++;
@@ -168,43 +225,7 @@
             clearInterval(interval);
             resolve();
           }
-        }, 100);
-      });
-    }
-
-    function renderTyping(w, h) {
-      return new Promise((resolve) => {
-        let frame = 0;
-        const totalFrames = 35;
-        const chars = "@%#*+=-:. ";
-        const step = 10;
-
-        ctx.drawImage(loadedImage, 0, 0, w, h);
-        const imgData = ctx.getImageData(0, 0, w, h).data;
-
-        const interval = setInterval(() => {
-          ctx.fillStyle = "#000";
-          ctx.fillRect(0, 0, w, h);
-          ctx.fillStyle = "#22c55e";
-          ctx.font = "9px monospace";
-
-          const currentMaxY = (frame / totalFrames) * h;
-
-          for (let y = 0; y < currentMaxY; y += step) {
-            for (let x = 0; x < w; x += step) {
-              const idx = (y * w + x) * 4;
-              const brightness = (imgData[idx] + imgData[idx + 1] + imgData[idx + 2]) / 3;
-              const charIdx = Math.floor((brightness / 255) * (chars.length - 1));
-              ctx.fillText(chars[charIdx], x, y);
-            }
-          }
-
-          frame++;
-          if (frame > totalFrames) {
-            clearInterval(interval);
-            resolve();
-          }
-        }, 35);
+        }, 33);
       });
     }
   </script>
